@@ -23,8 +23,6 @@ import hashlib
 import struct
 from tempfile import gettempdir
 
-from flask_babel import gettext as _
-
 from . import logger, comic
 from .constants import BookMeta
 
@@ -47,8 +45,9 @@ except (ImportError, RuntimeError) as e:
     use_generic_pdf_cover = True
 
 try:
-    from PyPDF2 import PdfFileReader
-    from PyPDF2 import __version__ as PyPdfVersion
+    from . import minecart
+    #from PyPDF4 import PdfFileReader
+    # from PyPDF4 import __version__ as PyPdfVersion
     use_pdf_meta = True
 except ImportError as e:
     log.debug('cannot import PyPDF2, extracting pdf metadata will not work: %s', e)
@@ -120,8 +119,11 @@ def default_meta(tmp_file_path, original_file_name, original_file_extension):
 def pdf_meta(tmp_file_path, original_file_name, original_file_extension):
 
     if use_pdf_meta:
-        pdf = PdfFileReader(open(tmp_file_path, 'rb'))
-        doc_info = pdf.getDocumentInfo()
+        pdf = minecart.Document(open(tmp_file_path, 'rb'))
+        doc_info = None
+        # doc_info = pdf.getDocumentInfo()
+        # pdf = PdfFileReader(open(tmp_file_path, 'rb'))
+        # doc_info = pdf.getDocumentInfo()
     else:
         doc_info = None
 
@@ -146,8 +148,6 @@ def pdf_meta(tmp_file_path, original_file_name, original_file_extension):
         languages="")
 
 
-def CMYKInvert(img):
-    return Image.merge(img.mode,[ImageOps.invert(b.convert('L')) for b in img.split()])
 
 def tiff_header_for_CCITT(width, height, img_size, CCITT_group=4):
     tiff_header_struct = '<' + '2s' + 'h' + 'l' + 'h' + 'hhll' * 8 + 'h'
@@ -173,6 +173,19 @@ def pdf_preview(tmp_file_path, tmp_dir):
     else:
         if use_PIL:
             try:
+                pdffile = open(tmp_file_path, 'rb')
+                doc = minecart.Document(pdffile)
+                page = doc.get_page(0)
+                im = page.images[0].as_pil()  # requires pillow
+                # >> > im.show()
+                cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
+                im.save(cover_file_name)
+                return cover_file_name
+            except Exception as ex:
+                log.exception(ex)
+                print(ex)
+
+                '''
                 input1 = PdfFileReader(open(tmp_file_path, 'rb'), strict=False)
                 page0 = input1.getPage(0)
                 mediaBox = page0['/MediaBox']
@@ -210,7 +223,7 @@ def pdf_preview(tmp_file_path, tmp_dir):
                                                   box[2]/mediaBox[2]*width,
                                                   box[3]/mediaBox[3]*height))
                                 img2.save(cover_file_name)
-                                return cover_file_name
+                                # return cover_file_name
                             elif xObject[obj]['/Filter'] == '/JPXDecode':
                                 cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jp2"
                                 img = open(cover_file_name, "wb")
@@ -254,7 +267,7 @@ def pdf_preview(tmp_file_path, tmp_dir):
                             return cover_file_name
                             # img.save(obj[1:] + ".png")
             except Exception as ex:
-                print(ex)
+                print(ex)'''
 
         try:
             cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
@@ -278,7 +291,8 @@ def get_versions():
         IVersion = u'not installed'
         WVersion = u'not installed'
     if use_pdf_meta:
-        PVersion='v'+PyPdfVersion
+        # PVersion='v'+PyPdfVersion
+        PVersion = u'installed'
     else:
         PVersion=u'not installed'
     if lxmlversion:
