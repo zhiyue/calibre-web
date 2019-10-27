@@ -489,27 +489,29 @@ class Image(GraphicsObject):
                            0  # last IFD
                            )
 
-    def _decode_CCITTFax(self):
+    def _decode_CCITTFax(self, image_data):
         import PIL.Image
         import PIL.ImageOps
 
-        if xObject[obj]['/DecodeParms']['/K'] == -1:
+        # if xObject[obj]['/DecodeParms']['/K'] == -1:
+        if self.obj.attrs.get('DecodeParms', 1)['K'] == -1:
             CCITT_group = 4
         else:
             CCITT_group = 3
-        width = xObject[obj]['/Width']
-        height = xObject[obj]['/Height']
-        img_size = len(data)
+        width =self.obj.attrs.get('Width', 1)
+        height = self.obj.attrs.get('Height', 1)
+        img_size = len(image_data)
 
-        '''tiff_header = self.tiff_header_for_CCITT(width, height, img_size, CCITT_group)
-        cover_file_name_tiff = os.path.splitext(tmp_file_path)[0] + obj[1:] + '.tiff'
+        tiff_header = self.tiff_header_for_CCITT(width, height, img_size, CCITT_group)
+        image = PIL.Image.open(io.BytesIO(tiff_header + image_data))
+        '''cover_file_name_tiff = os.path.splitext(tmp_file_path)[0] + obj[1:] + '.tiff'
         cover_file_name = os.path.splitext(tmp_file_path)[0] + obj[1:] + '.jpg'
         img = open(cover_file_name_tiff, "wb")
         img.write(tiff_header + data)
         img.close()'''
         # Post processing
         # img2 = PIL.Image.open(cover_file_name_tiff)
-        image = PIL.Image.frombuffer(mode, lti.size, image_data, 'raw', mode, 0, -1)
+        #image = PIL.Image.frombuffer(mode, lti.size, image_data, 'raw', mode, 0, -1)
         if image.mode == '1':
             image = PIL.ImageOps.invert(image.convert('RGB'))
         # return img2.save(cover_file_name)
@@ -524,10 +526,13 @@ class Image(GraphicsObject):
         """
         import PIL.Image
         import PIL.ImageCms
+        filters = self.obj.get_filters()[0][0].name
+        if filters == 'CCITTFaxDecode':
+            image_data = self.obj.get_rawdata()
+            return self._decode_CCITTFax(image_data)
         try:
             image_data = self.obj.get_data()
         except pdfminer.pdftypes.PDFNotImplementedError:
-            filters = self.obj.get_filters()
             if len(filters) == 1 and filters[0] in JPEG_FILTERS:
                 # FIXME: ColorSpace in JPEG2000 should be overridden by the
                 # ColorSpace in the Image dictionary
