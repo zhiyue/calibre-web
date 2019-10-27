@@ -119,7 +119,7 @@ def default_meta(tmp_file_path, original_file_name, original_file_extension):
 def pdf_meta(tmp_file_path, original_file_name, original_file_extension):
 
     if use_pdf_meta:
-        pdf = minecart.Document(open(tmp_file_path, 'rb'))
+        # pdf = minecart.Document(open(tmp_file_path, 'rb'))
         doc_info = None
         # doc_info = pdf.getDocumentInfo()
         # pdf = PdfFileReader(open(tmp_file_path, 'rb'))
@@ -177,6 +177,15 @@ def pdf_preview(tmp_file_path, tmp_dir):
                 doc = minecart.Document(pdffile)
                 page = doc.get_page(0)
                 im = page.images[0].as_pil()  # requires pillow
+                mediaBox = page.media_box
+                box = page.crop_box #  if 'crop_box' in page else mediaBox
+                width = im.width
+                height = im.height
+                im = im.crop((box[0] / mediaBox[2] * width,
+                                  box[1] / mediaBox[3] * height,
+                                  box[2] / mediaBox[2] * width,
+                                  box[3] / mediaBox[3] * height))
+
                 # >> > im.show()
                 cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
                 im.save(cover_file_name)

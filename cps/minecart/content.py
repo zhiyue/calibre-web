@@ -317,8 +317,9 @@ class Image(GraphicsObject):
 
         image = PIL.Image.open(io.BytesIO(image_data))
 
-        if str(cspace) == "/'DeviceCMYK'":
-            image = self.CMYKInvert(image)
+        if not isinstance(cspace, PDFObjRef):
+            if cspace.name == 'DeviceCMYK':
+                image = self.CMYKInvert(image)
 
         # If we have a ICC profile decode it and apply it to the image.
         # Return type is always sRGB because lazy.
@@ -500,7 +501,8 @@ class Image(GraphicsObject):
 
 
         # DCTDecode is a plain old jpeg.
-        filters = str(self.obj.get_filters()[0][0]).lstrip('/\'').strip('\'')
+        # filters = str(self.obj.get_filters()[0][0]).lstrip('/\'').strip('\'')
+        filters = self.obj.get_filters()[0][0].name
         if filters == u'DCTDecode' or filters == 'JPXDecode':
             return self._decode_dct(lti, cs_inst, image_data)
 
@@ -743,6 +745,12 @@ class Page(object):
                 pdfminer.pdftypes.resolve1(m_page.attrs['ArtBox']))
         except KeyError:
             self.art_box = self.crop_box
+        try:
+            self.media_box = self.adjust_box(
+                pdfminer.pdftypes.resolve1(m_page.attrs['MediaBox']))
+        except KeyError:
+            self.media_box = self.crop_box
+
 
     def adjust_box(self, box):
         "Translate and rotate the given box to device coordinates."
