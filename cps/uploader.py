@@ -149,23 +149,6 @@ def pdf_meta(tmp_file_path, original_file_name, original_file_extension):
 
 
 
-def tiff_header_for_CCITT(width, height, img_size, CCITT_group=4):
-    tiff_header_struct = '<' + '2s' + 'h' + 'l' + 'h' + 'hhll' * 8 + 'h'
-    return struct.pack(tiff_header_struct,
-                       b'II',  # Byte order indication: Little indian
-                       42,  # Version number (always 42)
-                       8,  # Offset to first IFD
-                       8,  # Number of tags in IFD
-                       256, 4, 1, width,  # ImageWidth, LONG, 1, width
-                       257, 4, 1, height,  # ImageLength, LONG, 1, lenght
-                       258, 3, 1, 1,  # BitsPerSample, SHORT, 1, 1
-                       259, 3, 1, CCITT_group,  # Compression, SHORT, 1, 4 = CCITT Group 4 fax encoding
-                       262, 3, 1, 0,  # Threshholding, SHORT, 1, 0 = WhiteIsZero
-                       273, 4, 1, struct.calcsize(tiff_header_struct),  # StripOffsets, LONG, 1, len of header
-                       278, 4, 1, height,  # RowsPerStrip, LONG, 1, lenght
-                       279, 4, 1, img_size,  # StripByteCounts, LONG, 1, size of image
-                       0  # last IFD
-                       )
 
 def pdf_preview(tmp_file_path, tmp_dir):
     if use_generic_pdf_cover:
