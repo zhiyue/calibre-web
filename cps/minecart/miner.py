@@ -350,3 +350,9 @@ class Document(object):
             if i == num:
                 self.interpreter.process_page(page)
                 return self.device.page
+
+    def getDocumentInfo(self):
+        if self.doc:
+            if len(self.doc.info):
+                return self.doc.info[0]
+        return None

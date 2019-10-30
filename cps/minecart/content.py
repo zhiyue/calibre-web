@@ -493,7 +493,6 @@ class Image(GraphicsObject):
         import PIL.Image
         import PIL.ImageOps
 
-        # if xObject[obj]['/DecodeParms']['/K'] == -1:
         if self.obj.attrs.get('DecodeParms', 1)['K'] == -1:
             CCITT_group = 4
         else:
@@ -504,17 +503,8 @@ class Image(GraphicsObject):
 
         tiff_header = self.tiff_header_for_CCITT(width, height, img_size, CCITT_group)
         image = PIL.Image.open(io.BytesIO(tiff_header + image_data))
-        '''cover_file_name_tiff = os.path.splitext(tmp_file_path)[0] + obj[1:] + '.tiff'
-        cover_file_name = os.path.splitext(tmp_file_path)[0] + obj[1:] + '.jpg'
-        img = open(cover_file_name_tiff, "wb")
-        img.write(tiff_header + data)
-        img.close()'''
-        # Post processing
-        # img2 = PIL.Image.open(cover_file_name_tiff)
-        #image = PIL.Image.frombuffer(mode, lti.size, image_data, 'raw', mode, 0, -1)
         if image.mode == '1':
             image = PIL.ImageOps.invert(image.convert('RGB'))
-        # return img2.save(cover_file_name)
         return image
 
     def as_pil(self):

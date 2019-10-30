@@ -68,7 +68,8 @@ except ImportError as e:
     use_fb2_meta = False
 
 try:
-    from PIL import Image, ImageOps
+    from PIL import Image as PILImage
+    from PIL import ImageOps
     from PIL import __version__ as PILversion
     use_PIL = True
 except ImportError as e:
@@ -119,18 +120,16 @@ def default_meta(tmp_file_path, original_file_name, original_file_extension):
 def pdf_meta(tmp_file_path, original_file_name, original_file_extension):
 
     if use_pdf_meta:
-        # pdf = minecart.Document(open(tmp_file_path, 'rb'))
-        doc_info = None
-        # doc_info = pdf.getDocumentInfo()
-        # pdf = PdfFileReader(open(tmp_file_path, 'rb'))
-        # doc_info = pdf.getDocumentInfo()
+        pdf = minecart.Document(open(tmp_file_path, 'rb'))
+        doc_info = pdf.getDocumentInfo()
     else:
+        pdf = None
         doc_info = None
 
     if doc_info is not None:
-        author = doc_info.author if doc_info.author else u"Unknown"
-        title = doc_info.title if doc_info.title else original_file_name
-        subject = doc_info.subject
+        author = doc_info['author'] if 'author' in doc_info else u"Unknown"
+        title = doc_info['title'] if 'title' in doc_info else original_file_name
+        subject = doc_info['subject'] if 'subject' in doc_info else ""
     else:
         author = u"Unknown"
         title = original_file_name
@@ -140,7 +139,7 @@ def pdf_meta(tmp_file_path, original_file_name, original_file_extension):
         extension=original_file_extension,
         title=title,
         author=author,
-        cover=pdf_preview(tmp_file_path, original_file_name),
+        cover=pdf_preview(pdf, tmp_file_path, original_file_name),
         description=subject,
         tags="",
         series="",
@@ -148,30 +147,49 @@ def pdf_meta(tmp_file_path, original_file_name, original_file_extension):
         languages="")
 
 
-
-
-def pdf_preview(tmp_file_path, tmp_dir):
+def pdf_preview(doc, tmp_file_path, tmp_dir):
     if use_generic_pdf_cover:
         return None
     else:
         if use_PIL:
             try:
-                pdffile = open(tmp_file_path, 'rb')
-                doc = minecart.Document(pdffile)
+                #pdffile = open(tmp_file_path, 'rb')
+                #doc = minecart.Document(pdffile)
                 page = doc.get_page(0)
-                im = page.images[0].as_pil()  # requires pillow
+                bbox = page.images[0].bbox
+                im = page.images[0].as_pil() # .resize((int(bbox[2]-bbox[0]),int(bbox[3]-bbox[0])))  # requires pillow
                 mediaBox = page.media_box
                 box = page.crop_box #  if 'crop_box' in page else mediaBox
                 width = im.width
                 height = im.height
-                im = im.crop((box[0] / mediaBox[2] * width,
+                #canvas = Image.new('RGB',(int(mediaBox[2]),int(mediaBox[3])))
+                #canvas.paste(im, (int(bbox[0]), int(bbox[1])))
+                if box != mediaBox:
+                    im = im.crop((box[0] / mediaBox[2] * width,
                                   box[1] / mediaBox[3] * height,
                                   box[2] / mediaBox[2] * width,
                                   box[3] / mediaBox[3] * height))
 
+                pos_size=(int(bbox[2]-bbox[0]),int(bbox[3]-bbox[1]))
+                if pos_size != (im.width, im.height):
+                    im = im.resize(pos_size, PILImage.ANTIALIAS)
+                left_top = (int(bbox[0]), int(bbox[1]))
+                if left_top != (0,0):
+                    canvas = PILImage.new('RGB', (int(mediaBox[2]), int(mediaBox[3])), color=(255, 255, 255, 0))
+                    canvas.paste(im, left_top)
+                else:
+                    canvas = im
                 # >> > im.show()
+                cords = page.images[0].ctm
+                if cords[0] - cords[1] < 0:
+                    canvas = canvas.transpose(PILImage.FLIP_LEFT_RIGHT)
+                if cords[3] - cords[2] < 0:
+                    canvas = canvas.transpose(PILImage.FLIP_TOP_BOTTOM)
                 cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
-                im.save(cover_file_name)
+                # ToDo: DPI and resolution
+                canvas.info['dpi'] = (150, 150)
+                canvas.save(cover_file_name, dpi=(150,150))
+                # canvas.save(cover_file_name)
                 return cover_file_name
             except Exception as ex:
                 log.exception(ex)
