@@ -219,7 +219,7 @@ def feed_series(book_id):
 @requires_basic_auth_if_no_ano
 def feed_shelfindex(public):
     off = request.args.get("offset") or 0
-    if public is not 0:
+    if public != 0:
         shelf = g.public_shelfes
         number = len(shelf)
     else:

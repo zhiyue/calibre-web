@@ -151,133 +151,46 @@ def pdf_preview(doc, tmp_file_path, tmp_dir):
     if use_generic_pdf_cover:
         return None
     else:
-        if use_PIL:
+        if use_PIL and use_pdf_meta:
             try:
-                #pdffile = open(tmp_file_path, 'rb')
-                #doc = minecart.Document(pdffile)
                 page = doc.get_page(0)
-                bbox = page.images[0].bbox
-                im = page.images[0].as_pil() # .resize((int(bbox[2]-bbox[0]),int(bbox[3]-bbox[0])))  # requires pillow
-                mediaBox = page.media_box
-                box = page.crop_box #  if 'crop_box' in page else mediaBox
-                width = im.width
-                height = im.height
-                #canvas = Image.new('RGB',(int(mediaBox[2]),int(mediaBox[3])))
-                #canvas.paste(im, (int(bbox[0]), int(bbox[1])))
-                if box != mediaBox:
-                    im = im.crop((box[0] / mediaBox[2] * width,
-                                  box[1] / mediaBox[3] * height,
-                                  box[2] / mediaBox[2] * width,
-                                  box[3] / mediaBox[3] * height))
+                if len(page.images) == 1:
+                    bbox = page.images[0].bbox
+                    im = page.images[0].as_pil()
+                    mediaBox = page.media_box
+                    box = page.crop_box
+                    width = im.width
+                    height = im.height
+                    if box != mediaBox:
+                        im = im.crop((box[0] / mediaBox[2] * width,
+                                      box[1] / mediaBox[3] * height,
+                                      box[2] / mediaBox[2] * width,
+                                      box[3] / mediaBox[3] * height))
 
-                pos_size=(int(bbox[2]-bbox[0]),int(bbox[3]-bbox[1]))
-                if pos_size != (im.width, im.height):
-                    im = im.resize(pos_size, PILImage.ANTIALIAS)
-                left_top = (int(bbox[0]), int(bbox[1]))
-                if left_top != (0,0):
-                    canvas = PILImage.new('RGB', (int(mediaBox[2]), int(mediaBox[3])), color=(255, 255, 255, 0))
-                    canvas.paste(im, left_top)
-                else:
-                    canvas = im
-                # >> > im.show()
-                cords = page.images[0].ctm
-                if cords[0] - cords[1] < 0:
-                    canvas = canvas.transpose(PILImage.FLIP_LEFT_RIGHT)
-                if cords[3] - cords[2] < 0:
-                    canvas = canvas.transpose(PILImage.FLIP_TOP_BOTTOM)
-                cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
-                # ToDo: DPI and resolution
-                canvas.info['dpi'] = (150, 150)
-                canvas.save(cover_file_name, dpi=(150,150))
-                # canvas.save(cover_file_name)
-                return cover_file_name
+                    pos_size=(int(bbox[2]-bbox[0]),int(bbox[3]-bbox[1]))
+                    if pos_size != (im.width, im.height):
+                        im = im.resize(pos_size, PILImage.ANTIALIAS)
+                    left_top = (int(bbox[0]), int(bbox[1]))
+                    if left_top != (0,0):
+                        canvas = PILImage.new('RGB', (int(mediaBox[2]), int(mediaBox[3])), color=(255, 255, 255, 0))
+                        canvas.paste(im, left_top)
+                    else:
+                        canvas = im
+                    cords = page.images[0].ctm
+                    if cords[0] - cords[1] < 0:
+                        canvas = canvas.transpose(PILImage.FLIP_LEFT_RIGHT)
+                    if cords[3] - cords[2] < 0:
+                        canvas = canvas.transpose(PILImage.FLIP_TOP_BOTTOM)
+
+                    cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
+                    # ToDo: DPI and resolution
+                    canvas.info['dpi'] = (150, 150)
+                    canvas.save(cover_file_name, dpi=(150,150))
+                    # canvas.save(cover_file_name)
+                    return cover_file_name
             except Exception as ex:
                 log.exception(ex)
                 print(ex)
-
-                '''
-                input1 = PdfFileReader(open(tmp_file_path, 'rb'), strict=False)
-                page0 = input1.getPage(0)
-                mediaBox = page0['/MediaBox']
-                box = page0['/CropBox'] if '/CropBox' in page0 else mediaBox
-                xObject = page0['/Resources']['/XObject'].getObject()
-
-                for obj in xObject:
-                    if xObject[obj]['/Subtype'] == '/Image':
-                        size = (xObject[obj]['/Width'], xObject[obj]['/Height'])
-                        data = xObject[obj]._data
-                        mode = "P"
-                        if xObject[obj]['/ColorSpace'] == '/DeviceRGB':
-                            mode = "RGB"
-                        if xObject[obj]['/ColorSpace'] == '/DeviceCMYK':
-                            mode = "CMYK"
-                        if '/Filter' in xObject[obj]:
-                            if xObject[obj]['/Filter'] == '/FlateDecode':
-                                img = Image.frombytes(mode, size, data)
-                                cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.png"
-                                img.save(filename=os.path.join(tmp_dir, cover_file_name))
-                                return cover_file_name
-                                # img.save(obj[1:] + ".png")
-                            elif xObject[obj]['/Filter'] == '/DCTDecode':
-                                cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
-                                img = open(cover_file_name, "wb")
-                                img.write(data)
-                                img.close()
-                                # Post processing
-                                img2 = Image.open(cover_file_name)
-                                width, height = img2.size
-                                if mode == 'CMYK':
-                                    img2 = CMYKInvert(img2)
-                                img2 = img2.crop((box[0]/mediaBox[2]*width,
-                                                  box[1]/mediaBox[3]*height,
-                                                  box[2]/mediaBox[2]*width,
-                                                  box[3]/mediaBox[3]*height))
-                                img2.save(cover_file_name)
-                                # return cover_file_name
-                            elif xObject[obj]['/Filter'] == '/JPXDecode':
-                                cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jp2"
-                                img = open(cover_file_name, "wb")
-                                img.write(data)
-                                img.close()
-                                # Post processing
-                                img2 = Image.open(cover_file_name)
-                                width, height = img2.size
-                                if mode == 'CMYK':
-                                    img2 = CMYKInvert(img2)
-                                img2 = img2.crop((box[0]/mediaBox[2]*width,
-                                                  box[1]/mediaBox[3]*height,
-                                                  box[2]/mediaBox[2]*width,
-                                                  box[3]/mediaBox[3]*height))
-                                img2.save(cover_file_name)
-                                return cover_file_name
-                            elif xObject[obj]['/Filter'] == '/CCITTFaxDecode':
-                                if xObject[obj]['/DecodeParms']['/K'] == -1:
-                                    CCITT_group = 4
-                                else:
-                                    CCITT_group = 3
-                                width = xObject[obj]['/Width']
-                                height = xObject[obj]['/Height']
-                                img_size = len(data)
-                                tiff_header = tiff_header_for_CCITT(width, height, img_size, CCITT_group)
-                                cover_file_name_tiff = os.path.splitext(tmp_file_path)[0] + obj[1:] + '.tiff'
-                                cover_file_name = os.path.splitext(tmp_file_path)[0] + obj[1:] + '.jpg'
-                                img = open(cover_file_name_tiff, "wb")
-                                img.write(tiff_header + data)
-                                img.close()
-                                # Post processing
-                                img2 = Image.open(cover_file_name_tiff)
-                                if img2.mode == '1':
-                                    img2 = ImageOps.invert(img2.convert('RGB'))
-                                img2.save(cover_file_name)
-                                return cover_file_name
-                        else:
-                            img = Image.frombytes(mode, size, data)
-                            cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.png"
-                            img.save(filename=os.path.join(tmp_dir, cover_file_name))
-                            return cover_file_name
-                            # img.save(obj[1:] + ".png")
-            except Exception as ex:
-                print(ex)'''
 
         try:
             cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
