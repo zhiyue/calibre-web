@@ -154,40 +154,55 @@ def pdf_preview(doc, tmp_file_path, tmp_dir):
         if use_PIL and use_pdf_meta:
             try:
                 page = doc.get_page(0)
-                if len(page.images) == 1:
-                    bbox = page.images[0].bbox
-                    im = page.images[0].as_pil()
+                canvas = None
+                for index, img in enumerate (page.images):
+                    #if len(page.images) == 1:
+                    bbox = img.bbox
+                    im = img.as_pil()
+                    #if index == 0:
+                    #    basebox = bbox
+                        # bbox = page.images[0].bbox
+                        # im = page.images[0].as_pil()
+
                     mediaBox = page.media_box
                     box = page.crop_box
                     width = im.width
                     height = im.height
-                    if box != mediaBox:
-                        im = im.crop((box[0] / mediaBox[2] * width,
-                                      box[1] / mediaBox[3] * height,
-                                      box[2] / mediaBox[2] * width,
-                                      box[3] / mediaBox[3] * height))
+                    if index == 0:
+                        if box != mediaBox:
+                            im = im.crop((box[0] / mediaBox[2] * width,
+                                          box[1] / mediaBox[3] * height,
+                                          box[2] / mediaBox[2] * width,
+                                          box[3] / mediaBox[3] * height))
 
-                    pos_size=(int(bbox[2]-bbox[0]),int(bbox[3]-bbox[1]))
-                    if pos_size != (im.width, im.height):
-                        im = im.resize(pos_size, PILImage.ANTIALIAS)
-                    left_top = (int(bbox[0]), int(bbox[1]))
-                    if left_top != (0,0):
-                        canvas = PILImage.new('RGB', (int(mediaBox[2]), int(mediaBox[3])), color=(255, 255, 255, 0))
-                        canvas.paste(im, left_top)
+                        pos_size=(int(bbox[2]-bbox[0]),int(bbox[3]-bbox[1]))
+                        if pos_size != (im.width, im.height):
+                            im = im.resize(pos_size, PILImage.ANTIALIAS)
+                        left_top = (int(bbox[0]), int(bbox[1]))
+
+                        if left_top != (0,0):
+                            canvas = PILImage.new('RGB', (int(mediaBox[2]), int(mediaBox[3])), color=(255, 255, 255, 0))
+                            canvas.paste(im, left_top)
+                        else:
+                            canvas = im
+                        cords = page.images[0].ctm
+                        if cords[0] - cords[1] < 0:
+                            canvas = canvas.transpose(PILImage.FLIP_LEFT_RIGHT)
+                        if cords[3] - cords[2] < 0:
+                            canvas = canvas.transpose(PILImage.FLIP_TOP_BOTTOM)
                     else:
-                        canvas = im
-                    cords = page.images[0].ctm
-                    if cords[0] - cords[1] < 0:
-                        canvas = canvas.transpose(PILImage.FLIP_LEFT_RIGHT)
-                    if cords[3] - cords[2] < 0:
-                        canvas = canvas.transpose(PILImage.FLIP_TOP_BOTTOM)
+                        #pasteImg = PILImage.new('CMYK', (int(mediaBox[2]), int(mediaBox[3])), color=(255, 255, 255, 0))
+                        #pasteImg.paste(im, left_top)
+                        cover_file_name = os.path.splitext(tmp_file_path)[0] + str(index) + ".co.tiff"
+                        im.save(cover_file_name)
+                        # canvas.paste(im, left_top)
+                        # PILImage.alpha_composite(canvas, pasteImg)
 
-                    cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
-                    # ToDo: DPI and resolution
-                    canvas.info['dpi'] = (150, 150)
-                    canvas.save(cover_file_name, dpi=(150,150))
-                    # canvas.save(cover_file_name)
-                    return cover_file_name
+                cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
+                # ToDo: DPI and resolution
+                canvas.info['dpi'] = (150, 150)
+                canvas.save(cover_file_name, dpi=(150,150))
+                return cover_file_name
             except Exception as ex:
                 log.exception(ex)
                 print(ex)

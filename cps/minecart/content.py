@@ -319,9 +319,9 @@ class Image(GraphicsObject):
 
         image = PIL.Image.open(io.BytesIO(image_data))
 
-        if not isinstance(cspace, PDFObjRef):
-            if cspace.name == 'DeviceCMYK':
-                image = self.CMYKInvert(image)
+        #if not isinstance(cspace, PDFObjRef):
+        #    if cspace.name == 'DeviceCMYK':
+        #        image = self.CMYKInvert(image)
 
         # If we have a ICC profile decode it and apply it to the image.
         # Return type is always sRGB because lazy.
