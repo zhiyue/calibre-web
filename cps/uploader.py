@@ -74,7 +74,6 @@ try:
     use_PIL = True
 except ImportError as e:
     log.debug('cannot import Pillow, using png and webp images as cover will not work: %s', e)
-    use_generic_pdf_cover = True
     use_PIL = False
 
 
@@ -123,7 +122,6 @@ def pdf_meta(tmp_file_path, original_file_name, original_file_extension):
         pdf = minecart.Document(open(tmp_file_path, 'rb'))
         doc_info = pdf.getDocumentInfo()
     else:
-        pdf = None
         doc_info = None
 
     if doc_info is not None:
@@ -139,7 +137,7 @@ def pdf_meta(tmp_file_path, original_file_name, original_file_extension):
         extension=original_file_extension,
         title=title,
         author=author,
-        cover=pdf_preview(pdf, tmp_file_path, original_file_name),
+        cover=pdf_preview(tmp_file_path, original_file_name),
         description=subject,
         tags="",
         series="",
@@ -147,69 +145,16 @@ def pdf_meta(tmp_file_path, original_file_name, original_file_extension):
         languages="")
 
 
-def pdf_preview(doc, tmp_file_path, tmp_dir):
+def pdf_preview(tmp_file_path, tmp_dir):
     if use_generic_pdf_cover:
         return None
     else:
-        if use_PIL and use_pdf_meta:
-            try:
-                page = doc.get_page(0)
-                canvas = None
-                for index, img in enumerate (page.images):
-                    #if len(page.images) == 1:
-                    bbox = img.bbox
-                    im = img.as_pil()
-                    #if index == 0:
-                    #    basebox = bbox
-                        # bbox = page.images[0].bbox
-                        # im = page.images[0].as_pil()
-
-                    mediaBox = page.media_box
-                    box = page.crop_box
-                    width = im.width
-                    height = im.height
-                    if index == 0:
-                        if box != mediaBox:
-                            im = im.crop((box[0] / mediaBox[2] * width,
-                                          box[1] / mediaBox[3] * height,
-                                          box[2] / mediaBox[2] * width,
-                                          box[3] / mediaBox[3] * height))
-
-                        pos_size=(int(bbox[2]-bbox[0]),int(bbox[3]-bbox[1]))
-                        if pos_size != (im.width, im.height):
-                            im = im.resize(pos_size, PILImage.ANTIALIAS)
-                        left_top = (int(bbox[0]), int(bbox[1]))
-
-                        if left_top != (0,0):
-                            canvas = PILImage.new('RGB', (int(mediaBox[2]), int(mediaBox[3])), color=(255, 255, 255, 0))
-                            canvas.paste(im, left_top)
-                        else:
-                            canvas = im
-                        cords = page.images[0].ctm
-                        if cords[0] - cords[1] < 0:
-                            canvas = canvas.transpose(PILImage.FLIP_LEFT_RIGHT)
-                        if cords[3] - cords[2] < 0:
-                            canvas = canvas.transpose(PILImage.FLIP_TOP_BOTTOM)
-                    else:
-                        #pasteImg = PILImage.new('CMYK', (int(mediaBox[2]), int(mediaBox[3])), color=(255, 255, 255, 0))
-                        #pasteImg.paste(im, left_top)
-                        cover_file_name = os.path.splitext(tmp_file_path)[0] + str(index) + ".co.tiff"
-                        im.save(cover_file_name)
-                        # canvas.paste(im, left_top)
-                        # PILImage.alpha_composite(canvas, pasteImg)
-
-                cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
-                # ToDo: DPI and resolution
-                canvas.info['dpi'] = (150, 150)
-                canvas.save(cover_file_name, dpi=(150,150))
-                return cover_file_name
-            except Exception as ex:
-                log.exception(ex)
-                print(ex)
-
         try:
             cover_file_name = os.path.splitext(tmp_file_path)[0] + ".cover.jpg"
-            with Image(filename=tmp_file_path + "[0]", resolution=150) as img:
+            with Image() as img:
+                img.resolution = 150
+                img.options["pdf:use-cropbox"] = "true"
+                img.read(filename=tmp_file_path + '[0]')
                 img.compression_quality = 88
                 img.save(filename=os.path.join(tmp_dir, cover_file_name))
             return cover_file_name
