@@ -41,7 +41,7 @@
   {% for entry in entries %}
   <entry>
     <title>{{entry.title}}</title>
-    <id>{{entry.uuid}}</id>
+    <id>urn:uuid:{{entry.uuid}}</id>
     <updated>{{entry.atom_timestamp}}</updated>
     {% if entry.authors.__len__() > 0 %}
       <author>
@@ -53,7 +53,9 @@
         <name>{{entry.publishers[0].name}}</name>
       </publisher>
     {% endif %}
-    <dcterms:language>{{entry.language}}</dcterms:language>
+    {% for lang in entry.languages %}
+      <dcterms:language>{{lang.lang_code}}</dcterms:language>
+    {% endfor %}
     {% for tag in entry.tags %}
     <category scheme="http://www.bisg.org/standards/bisac_subject/index.html"
               term="{{tag.name}}"
